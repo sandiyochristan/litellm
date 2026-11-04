@@ -1,6 +1,8 @@
 import hashlib
 import io
+import stat
 import zipfile
+from typing import Final
 
 from litellm.proxy.discovery_endpoints.agent_skills_archive import (
     MAX_ARCHIVE_ENTRIES,
@@ -104,3 +106,39 @@ def test_an_upload_over_the_entry_cap_is_not_installable():
     }
 
     assert build_skill_archive(zip_bytes(files)) is None
+
+
+def test_finder_metadata_filter_is_opt_in_and_preserves_skill_files() -> None:
+    upload: Final = zip_bytes({
+        "pdf-summarizer/SKILL.md": MANIFEST,
+        "pdf-summarizer/reference.md": b"page citations",
+        "pdf-summarizer/.DS_Store": b"Finder metadata",
+        "__MACOSX/._SKILL.md": b"Finder resource fork",
+    })
+
+    assert build_skill_archive(upload) is None
+    filtered: Final = build_skill_archive(upload, ignore_macos_metadata=True)
+    assert filtered is not None
+    assert entries_of(filtered.content) == {
+        "SKILL.md": MANIFEST,
+        "reference.md": b"page citations",
+    }
+
+
+def test_discovery_keeps_permissions_normalized_without_executable_opt_in() -> None:
+    buffer: Final = io.BytesIO()
+    executable: Final = zipfile.ZipInfo("scripts/run.sh")
+    executable.create_system = 3
+    executable.external_attr = (stat.S_IFREG | 0o7777) << 16
+    with zipfile.ZipFile(buffer, "w") as uploaded:
+        uploaded.writestr("SKILL.md", MANIFEST)
+        uploaded.writestr(executable, b"#!/bin/sh\necho ready\n")
+
+    result: Final = build_skill_archive(buffer.getvalue())
+
+    assert result is not None
+    with zipfile.ZipFile(io.BytesIO(result.content)) as archive:
+        assert {entry.filename: (entry.create_system, entry.external_attr >> 16) for entry in archive.infolist()} == {
+            "SKILL.md": (3, 0o644),
+            "scripts/run.sh": (3, 0o644),
+        }
