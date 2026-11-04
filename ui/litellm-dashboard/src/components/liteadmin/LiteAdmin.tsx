@@ -92,7 +92,11 @@ export function LiteAdminFrame({ children }: { children: ReactNode }) {
   const [started, setStarted] = useState(false);
   const [homeContainer, setHomeContainer] = useState<HTMLDivElement | null>(null);
   const [usageContainer, updateUsageContainer] = useState<HTMLDivElement | null>(null);
-  const [pageContainer, setPageContainer] = useState<HTMLDivElement | null>(null);
+  const [pageContainer, updatePageContainer] = useState<HTMLDivElement | null>(null);
+  const setPageContainer = useCallback((container: HTMLDivElement | null) => {
+    updatePageContainer(container);
+    if (container) setStarted(true);
+  }, []);
   const setUsageContainer = useCallback((container: HTMLDivElement | null) => {
     updateUsageContainer(container);
     if (container) setStarted(true);
@@ -101,7 +105,7 @@ export function LiteAdminFrame({ children }: { children: ReactNode }) {
   if (openedSession !== sessionKey) {
     setOpenedSession(sessionKey);
     setOpen(false);
-    setStarted(Boolean(usageContainer));
+    setStarted(Boolean(usageContainer || pageContainer));
   }
   const toggle = () => {
     setStarted(true);

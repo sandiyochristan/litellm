@@ -264,27 +264,31 @@ afterEach(() => {
 });
 
 describe("Aria Agent in the gateway", () => {
-  it("keeps the page open with Escape and carries its conversation and draft into the quick panel", async () => {
-    gateway([answer("Your usage is within budget.")]);
-    const view = renderWidget(undefined, false, false, { showPage: true });
-    await selectModel();
-    const workspace = screen.getByRole("region", { name: "Aria Agent", exact: true });
-    expect(screen.queryByRole("dialog", { name: "Aria Agent" })).not.toBeInTheDocument();
-    fireEvent.keyDown(document, { key: "Escape" });
-    expect(workspace).toBeVisible();
-    fireEvent.keyDown(document, { key: "j", metaKey: true });
-    expect(within(workspace).getByRole("textbox")).toHaveFocus();
-    send("Check my usage");
-    expect(await within(workspace).findByText("Your usage is within budget.")).toBeVisible();
-    fireEvent.change(within(workspace).getByRole("textbox"), { target: { value: "What changed?" } });
-    view.refresh(false, false, false);
-    expect(screen.queryByRole("dialog", { name: "Aria Agent" })).not.toBeInTheDocument();
-    fireEvent.keyDown(document, { key: "j", ctrlKey: true });
-    const panel = await screen.findByRole("dialog", { name: "Aria Agent" });
-    expect(within(panel).getByRole("textbox")).toHaveValue("What changed?");
-    expect(within(panel).getByText("Your usage is within budget.")).toBeVisible();
-    expect(within(panel).getByRole("combobox", { name: "Aria Agent model" })).toHaveValue("chat-model");
-  });
+  it.each([true, false])(
+    "keeps the page open and carries its conversation into the quick panel with premium=%s",
+    async (premiumUser) => {
+      session("proxy_admin", "first-admin", { premium_user: premiumUser });
+      gateway([answer("Your usage is within budget.")]);
+      const view = renderWidget(undefined, false, false, { showPage: true });
+      await selectModel();
+      const workspace = screen.getByRole("region", { name: "Aria Agent", exact: true });
+      expect(screen.queryByRole("dialog", { name: "Aria Agent" })).not.toBeInTheDocument();
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(workspace).toBeVisible();
+      fireEvent.keyDown(document, { key: "j", metaKey: true });
+      expect(within(workspace).getByRole("textbox")).toHaveFocus();
+      send("Check my usage");
+      expect(await within(workspace).findByText("Your usage is within budget.")).toBeVisible();
+      fireEvent.change(within(workspace).getByRole("textbox"), { target: { value: "What changed?" } });
+      view.refresh(false, false, false);
+      expect(screen.queryByRole("dialog", { name: "Aria Agent" })).not.toBeInTheDocument();
+      fireEvent.keyDown(document, { key: "j", ctrlKey: true });
+      const panel = await screen.findByRole("dialog", { name: "Aria Agent" });
+      expect(within(panel).getByRole("textbox")).toHaveValue("What changed?");
+      expect(within(panel).getByText("Your usage is within budget.")).toBeVisible();
+      expect(within(panel).getByRole("combobox", { name: "Aria Agent model" })).toHaveValue("chat-model");
+    },
+  );
 
   it.each(["proxy_admin", "internal_user"])(
     "should start a conversation from the exact suggested question without changing %s permissions",
