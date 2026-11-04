@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/cva.config";
 import { BookOpen, Github, Newspaper, ScrollText, Slack, type LucideIcon } from "lucide-react";
 
-export const DOCS_URL = "https://docs.litellm.ai/docs/";
+const DOCS_URL = "https://docs.litellm.ai/docs/";
 
 interface ResourceLink {
   href: string;

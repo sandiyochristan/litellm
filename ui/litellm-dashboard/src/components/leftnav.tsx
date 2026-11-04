@@ -83,9 +83,8 @@ import {
 import BetaBadge from "./BetaBadge";
 import SidebarAccountMenu from "./SidebarAccountMenu/SidebarAccountMenu";
 import ViewSwitcher from "./Navbar/ViewSwitcher";
-import { AriaAvatar } from "./liteadmin/AriaAvatar";
+import { LiteAdminNav } from "./liteadmin/LiteAdmin";
 import { ARIA_AGENT_LABEL } from "./liteadmin/aria-brand";
-import { Kbd } from "./ui/kbd";
 import SidebarUsageCard from "./SidebarUsageCard";
 import { routeSegmentForPathname, uiHref } from "@/utils/uiHref";
 
@@ -738,20 +737,7 @@ const Sidebar_: React.FC<SidebarProps> = ({
       <div className="px-3 pt-3 group-data-[collapsed=true]/sidebar:px-2">
         <ViewSwitcher className="w-full max-w-none justify-start [&_[data-slot=workspace-chevron]]:ml-auto group-data-[collapsed=true]/sidebar:justify-center group-data-[collapsed=true]/sidebar:px-0 group-data-[collapsed=true]/sidebar:[&_[data-slot=workspace-chevron]]:hidden group-data-[collapsed=true]/sidebar:[&_[data-slot=workspace-label]]:hidden" />
       </div>
-      <div className="px-3 pt-3 group-data-[collapsed=true]/sidebar:px-2">
-        <Link
-          href={uiHref("aria")}
-          aria-label={ARIA_AGENT_LABEL}
-          className={cn(
-            "flex h-9 items-center gap-2 rounded-lg px-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent group-data-[collapsed=true]/sidebar:justify-center group-data-[collapsed=true]/sidebar:px-0",
-            onAriaPage && "bg-sidebar-accent",
-          )}
-        >
-          <AriaAvatar size={22} />
-          <span className="group-data-[collapsed=true]/sidebar:hidden">{ARIA_AGENT_LABEL}</span>
-          <Kbd className="ml-auto group-data-[collapsed=true]/sidebar:hidden">⌘J</Kbd>
-        </Link>
-      </div>
+      <LiteAdminNav active={onAriaPage} />
 
       <ScrollArea className="min-h-0 flex-1">
         <nav className="flex flex-col gap-0.5 px-3 pb-3">

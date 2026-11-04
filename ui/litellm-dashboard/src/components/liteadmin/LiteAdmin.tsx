@@ -12,6 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { History, RotateCcw, X } from "lucide-react";
 import { z } from "zod";
@@ -34,6 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTerminology } from "@/contexts/TerminologyContext";
 import { cn } from "@/lib/cva.config";
 import { hasProxyWideSpendView, isProxyAdminRole } from "@/utils/roles";
+import { uiHref } from "@/utils/uiHref";
 import { getPreferredLiteAdminModel, MAX_INPUT_LENGTH, resolveInferenceTarget } from "./agent";
 import { AriaAvatar } from "./AriaAvatar";
 import { ARIA_AGENT_LABEL } from "./aria-brand";
@@ -106,7 +108,7 @@ export function LiteAdminFrame({ children }: { children: ReactNode }) {
     setOpen((current) => !current);
   };
   const show = () => {
-    if (open) return;
+    if (open || pageContainer) return;
     setStarted(true);
     setOpen(true);
   };
@@ -119,11 +121,15 @@ export function LiteAdminFrame({ children }: { children: ReactNode }) {
       const extraModifier = event.shiftKey || event.altKey;
       if (event.key.toLowerCase() !== "j" || !modifier || extraModifier) return;
       event.preventDefault();
+      if (pageContainer) {
+        pageContainer.querySelector<HTMLTextAreaElement>("textarea:enabled")?.focus();
+        return;
+      }
       toggle();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [sessionKey]);
+  }, [sessionKey, pageContainer]);
   return (
     <LiteAdminContext.Provider
       value={
@@ -173,6 +179,28 @@ export function LiteAdminHome() {
       </div>
       <div ref={setHomeContainer} />
     </section>
+  );
+}
+
+export function LiteAdminNav({ active }: { active: boolean }) {
+  const state = useContext(LiteAdminContext);
+  if (!state) return null;
+  return (
+    <div className="px-3 pt-3 group-data-[collapsed=true]/sidebar:px-2">
+      <Link
+        href={uiHref("aria")}
+        aria-label={ARIA_AGENT_LABEL}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex h-9 items-center gap-2 rounded-lg px-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent group-data-[collapsed=true]/sidebar:justify-center group-data-[collapsed=true]/sidebar:px-0",
+          active && "bg-sidebar-accent",
+        )}
+      >
+        <AriaAvatar size={22} />
+        <span className="group-data-[collapsed=true]/sidebar:hidden">{ARIA_AGENT_LABEL}</span>
+        <Kbd className="ml-auto group-data-[collapsed=true]/sidebar:hidden">⌘J</Kbd>
+      </Link>
+    </div>
   );
 }
 
@@ -341,6 +369,15 @@ function Panel({
   const homeContainer = state?.pageContainer ? null : getComposerContainer(state, open);
   const ref = useRef<HTMLDivElement>(null);
   const pageContainer = state?.pageContainer ?? null;
+  if (pageContainer) {
+    return createPortal(
+      <section aria-label={ARIA_AGENT_LABEL} className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col">
+        {children}
+        {composer}
+      </section>,
+      pageContainer,
+    );
+  }
   return (
     <Dialog
       open={open}
@@ -361,12 +398,7 @@ function Panel({
           initialFocus?.current ?? ref.current?.querySelector<HTMLElement>("textarea:enabled") ?? ref.current
         }
         finalFocus={state?.triggerRef}
-        container={pageContainer ?? undefined}
-        className={cn(
-          "flex h-[min(48rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 shadow-xl sm:max-w-4xl",
-          pageContainer &&
-            "relative top-auto left-auto z-auto h-full max-w-none translate-x-0 translate-y-0 rounded-none bg-background shadow-none ring-0 data-open:animate-none sm:max-w-none *:mx-auto *:w-full *:max-w-3xl",
-        )}
+        className="flex h-[min(48rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 shadow-xl sm:max-w-4xl"
       >
         {children}
         {homeContainer ? createPortal(composer, homeContainer) : composer}
@@ -468,16 +500,18 @@ function LiteAdminChat({ session, open, close }: { session: LiteAdminSession; op
   return (
     <Panel open={open} close={close} initialFocus={reviewRef} composer={composer}>
       <PanelHeader>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={chat.phase === "applying" || (chat.entries.length === 0 && !input)}
-          onClick={startOver}
-          className="text-muted-foreground"
-        >
-          <RotateCcw className="size-3.5" />
-          Start over
-        </Button>
+        {(chat.entries.length > 0 || input) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={chat.phase === "applying" || (chat.entries.length === 0 && !input)}
+            onClick={startOver}
+            className="text-muted-foreground"
+          >
+            <RotateCcw className="size-3.5" />
+            Start over
+          </Button>
+        )}
       </PanelHeader>
       <LiteAdminConversation
         entries={chat.entries}
@@ -509,8 +543,9 @@ function LiteAdminComposer({
   usage: boolean;
   tooLong: boolean;
 }) {
+  const state = useContext(LiteAdminContext);
   return (
-    <div className={cn("space-y-3", !home && "border-t p-3")}>
+    <div className={cn("space-y-3", !home && "p-4 sm:px-6", state?.pageContainer && "pb-6 sm:pb-8")}>
       <ModelStatus models={models} />
       {tooLong && <FieldError>Keep your message within {MAX_INPUT_LENGTH.toLocaleString()} characters.</FieldError>}
       {home ? (
@@ -525,7 +560,7 @@ function LiteAdminComposer({
         <ChatComposer
           {...props}
           placeholder="Ask Aria…"
-          className="[&_[data-slot=input-group]]:min-h-0 [&_textarea]:min-h-12"
+          className="[&_[data-slot=input-group]]:min-h-0 [&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:shadow-none [&_[data-slot=input-group]]:ring-0 [&_textarea]:min-h-12"
           tools={
             <ModelPicker models={models} value={model} onChange={onModelChange} disabled={props.isLoading} compact />
           }
@@ -581,11 +616,14 @@ function ModelStatus({ models }: { models: UseQueryResult<ModelGroup[]> }) {
 function PanelHeader({ children }: { children?: ReactNode }) {
   const state = useContext(LiteAdminContext);
   const term = useTerminology();
+  if (state?.pageContainer) {
+    return <div className="flex min-h-12 shrink-0 items-center justify-end px-4 pt-3 sm:px-6">{children}</div>;
+  }
   return (
     <div className="flex items-start justify-between gap-3 border-b p-4">
       <div className="flex flex-col gap-1 text-sm">
         <DialogTitle className="flex items-center gap-2 font-semibold">
-          <AriaAvatar size={32} />
+          <AriaAvatar size={22} />
           {ARIA_AGENT_LABEL}
         </DialogTitle>
         <DialogDescription>
@@ -612,5 +650,5 @@ export function LiteAdminPage() {
     return <p className="p-6 text-sm text-muted-foreground">{ARIA_AGENT_LABEL} is not available for this account.</p>;
   }
   const { setPageContainer } = state;
-  return <div ref={setPageContainer} className="h-full min-h-0 *:h-full" />;
+  return <div ref={setPageContainer} className="h-full min-h-0" />;
 }

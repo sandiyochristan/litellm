@@ -3,6 +3,7 @@ import { Download } from "lucide-react";
 import { ChatMessageContent } from "@/components/chat/ChatMessages";
 import type { ChatMessage } from "@/components/chat/types";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import { ARIA_AGENT_LABEL } from "./aria-brand";
 import { exportAriaAnswer } from "./answerExport";
@@ -26,7 +27,6 @@ export function AriaAnswer({
   };
   return (
     <article aria-label={`${ARIA_AGENT_LABEL} answer`} className="space-y-3">
-      <p className="text-xs font-medium text-muted-foreground">{ARIA_AGENT_LABEL}</p>
       <div ref={answerRef} className="space-y-4">
         {chart && <UsageAnswerChart chart={chart} />}
         <ChatMessageContent
@@ -35,10 +35,23 @@ export function AriaAnswer({
           isLastMessage={false}
           isStreaming={false}
           actions={
-            <Button variant="ghost" size="sm" onClick={exportAnswer} data-export-exclude>
-              <Download className="size-3.5" />
-              Export answer
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={exportAnswer}
+                    aria-label="Export answer"
+                    className="text-muted-foreground"
+                    data-export-exclude
+                  />
+                }
+              >
+                <Download className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Export answer</TooltipContent>
+            </Tooltip>
           }
         />
       </div>
